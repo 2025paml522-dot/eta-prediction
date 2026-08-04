@@ -1,0 +1,8 @@
+{
+  "pickup_lat": 40.7580,
+  "pickup_lon": -73.9855,
+  "dropoff_lat": 40.7128,
+  "dropoff_lon": -74.0060,
+  "pickup_datetime": "2026-06-14T18:30:00",
+  "weather_condition": "rain"
+}

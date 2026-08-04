@@ -1,0 +1,31 @@
+data:
+  raw_path: data/raw/trips.csv
+  processed_path: data/processed/train.parquet
+  test_size: 0.2
+  random_state: 42
+
+features:
+  time_features: [hour_of_day, day_of_week, is_weekend, is_rush_hour]
+  distance_feature: haversine_km
+  categorical: [pickup_zone, weather_condition]
+
+training:
+  experiment_name: eta-prediction
+  models:
+    - name: linear_regression
+    - name: gradient_boosting
+      params: {n_estimators: 300, max_depth: 6, learning_rate: 0.05}
+  target: trip_duration_seconds
+  cv_folds: 5
+
+serving:
+  model_stage: Production
+  host: 0.0.0.0
+  port: 8000
+
+monitoring:
+  reference_window_days: 30
+  drift_check_interval_hours: 24
+  psi_threshold: 0.2
+  retrain_trigger_metric: mae
+  retrain_trigger_threshold_pct: 15
