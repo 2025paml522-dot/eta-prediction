@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Data & models (tracked via DVC, not Git)
+data/raw/*
+data/interim/*
+data/processed/*
+!data/**/.gitkeep
+!data/**/*.dvc
+!data/**/.gitignore
+models/*.pkl
+models/*.onnx
+mlruns/
+mlartifacts/
+
+# Env / secrets
+.env
+*.env.local
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/

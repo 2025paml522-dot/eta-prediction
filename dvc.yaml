@@ -1,7 +1,7 @@
 stages:
   ingest:
     cmd: python src/data/ingest.py --config config/config.yaml
-    deps: [src/data/ingest.py, data/raw/trips.csv]
+    deps: [src/data/ingest.py, data/raw/trips_raw.csv]
     outs: [data/interim/trips_validated.parquet]
 
   features:
