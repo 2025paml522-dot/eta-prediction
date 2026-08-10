@@ -1,15 +1,1 @@
-stages:
-  ingest:
-    cmd: python src/data/ingest.py --config config/config.yaml
-    deps: [src/data/ingest.py, data/raw/trips_raw.csv]
-    outs: [data/interim/trips_validated.parquet]
-
-  features:
-    cmd: python src/features/build_features.py --config config/config.yaml
-    deps: [src/features/build_features.py, data/interim/trips_validated.parquet]
-    outs: [data/processed/train.parquet]
-
-  train:
-    cmd: python src/models/train.py --config config/config.yaml
-    deps: [src/models/train.py, data/processed/train.parquet]
-    metrics: [reports/metrics.json]
+stages: {}
