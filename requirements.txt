@@ -6,7 +6,7 @@ pyarrow==15.0.2
 
 # Experiment tracking & versioning
 mlflow==2.14.1
-dvc==3.51.2
+dvc[gdrive]==3.51.2
 
 # Modeling
 xgboost==2.0.3
@@ -27,3 +27,7 @@ great-expectations==0.18.19
 # Utilities
 pyyaml==6.0.1
 python-dotenv==1.0.1
+
+#Google drive dvc-storage
+pip install "dvc[gdrive]"
+pip install "pyOpenSSL>=24.0.0" "cryptography>=42.0.0"
