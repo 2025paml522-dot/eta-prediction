@@ -1,6 +1,7 @@
 import os
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ---- Data ----
 DATA_DIR = os.path.join(ROOT_DIR, "data")
@@ -71,3 +72,8 @@ RANDOM_STATE = 42
 # Valid NYC-ish bounding box used for GPS sanity checks (swap for your city)
 LAT_BOUNDS = (40.4, 41.1)
 LON_BOUNDS = (-74.5, -73.5)
+
+if __name__ == "__main__":
+    print(repr(PROCESSED_TRIPS_FILE))
+    print(os.path.exists(PROCESSED_TRIPS_FILE))
+    print(repr(ROOT_DIR))
