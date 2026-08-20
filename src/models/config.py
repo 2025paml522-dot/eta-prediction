@@ -51,15 +51,11 @@ FEATURE_COLUMNS = [
     "day_of_week",
     "is_weekend",
     "is_rush_hour",
-    "hour_sin",
-    "hour_cos",
     "temperature_c",
     "precipitation_mm",
     "traffic_level_enc",
     "weather_condition_enc",
     "passenger_count",
-    "pickup_zone",
-    "dropoff_zone",
 ]
 
 CATEGORICAL_MAPS = {

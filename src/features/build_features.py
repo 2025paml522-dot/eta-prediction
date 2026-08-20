@@ -4,16 +4,28 @@ import sys
 import pandas as pd
 import yaml
 
+from src.models.config import (
+CATEGORICAL_MAPS,FEATURE_COLUMNS,TARGET_COL
+)
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    d = df.copy()
+    df = df.copy()
 
-    d["hour_of_day"] = d["pickup_datetime"].dt.hour
-    d["day_of_week"] = d["pickup_datetime"].dt.dayofweek
-    d["is_weekend"] = d["day_of_week"].isin([5, 6])
-    d["is_rush_hour"] = d["hour_of_day"].isin([7, 8, 9, 16, 17, 18])
+    df["hour_of_day"] = df["pickup_datetime"].dt.hour
+    df["day_of_week"] = df["pickup_datetime"].dt.dayofweek
+    df["is_weekend"] = df["day_of_week"].isin([5, 6])
+    df["is_rush_hour"] = df["hour_of_day"].isin([7, 8, 9, 16, 17, 18])
 
-    return d
+    # ---- categorical encodings ----
+    df["traffic_level_enc"] = df["traffic_level"].map(CATEGORICAL_MAPS["traffic_level"]).fillna(-1)
+    df["weather_condition_enc"] = df["weather_condition"].map(CATEGORICAL_MAPS["weather_condition"]).fillna(-1)
+
+    # ---- missing weather numeric values ----
+    df["temperature_c"] = df["temperature_c"].fillna(df["temperature_c"].median())
+    df["precipitation_mm"] = df["precipitation_mm"].fillna(0)
+
+    keep_cols = FEATURE_COLUMNS + ([TARGET_COL] if TARGET_COL in df.columns else [])
+    return df[keep_cols]
 
 
 def run(interim_path: str, out_path: str):
