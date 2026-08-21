@@ -28,6 +28,5 @@ great-expectations==0.18.19
 pyyaml==6.0.1
 python-dotenv==1.0.1
 
-#Google drive dvc-storage
-# pip install "dvc[gdrive]"
-# pip install "pyOpenSSL>=24.0.0" "cryptography>=42.0.0"
+pyOpenSSL>=24.0.0
+cryptography>=42.0.0

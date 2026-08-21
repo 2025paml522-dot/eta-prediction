@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 import joblib
 import numpy as np
 import pandas as pd
+import mlflow
+import mlflow.sklearn
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -30,6 +32,12 @@ from src.models.config import (
     MODELS_DIR, BEST_MODEL_PATH, MODEL_METADATA_PATH, EXPERIMENTS_LOG,
     REFERENCE_STATS_PATH,
 )
+
+# ---- MLflow configuration -------------------------------------------------
+# Point this at a remote tracking server if you have one, e.g.
+# MLFLOW_TRACKING_URI=http://localhost:5000
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "eta-prediction")
 
 
 def load_dataset() -> pd.DataFrame:
@@ -72,6 +80,9 @@ def log_experiment(row: dict):
 
 
 def train_and_compare(test_size: float = 0.2) -> dict:
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+
     df = load_dataset()
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COL]
@@ -83,65 +94,104 @@ def train_and_compare(test_size: float = 0.2) -> dict:
     results = {}
     fitted_models = {}
 
-    for name, model in get_candidate_models().items():
-        t0 = time.time()
-        model.fit(X_train, y_train)
-        train_time = time.time() - t0
+    # One parent run per training invocation, one nested child run per model.
+    # This lets you compare all four candidates side-by-side in the MLflow UI
+    # while still grouping them under a single "training session".
+    with mlflow.start_run(run_name=f"training-run-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}") as parent_run:
+        mlflow.log_param("test_size", test_size)
+        mlflow.log_param("n_features", len(FEATURE_COLUMNS))
+        mlflow.log_param("feature_columns", ",".join(FEATURE_COLUMNS))
+        mlflow.log_param("target_column", TARGET_COL)
+        mlflow.log_param("n_train", len(X_train))
+        mlflow.log_param("n_test", len(X_test))
 
-        preds = model.predict(X_test)
-        metrics = evaluate(y_test, preds)
-        metrics["train_time_sec"] = round(train_time, 3)
+        for name, model in get_candidate_models().items():
+            with mlflow.start_run(run_name=name, nested=True):
+                t0 = time.time()
+                model.fit(X_train, y_train)
+                train_time = time.time() - t0
 
-        results[name] = metrics
-        fitted_models[name] = model
+                preds = model.predict(X_test)
+                metrics = evaluate(y_test, preds)
+                metrics["train_time_sec"] = round(train_time, 3)
 
-        log_experiment({
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "model_name": name,
-            "params": json.dumps(model.get_params()),
-            "mae": metrics["mae"],
-            "rmse": metrics["rmse"],
-            "r2": metrics["r2"],
-            "train_time_sec": metrics["train_time_sec"],
+                results[name] = metrics
+                fitted_models[name] = model
+
+                # --- MLflow logging for this candidate ---
+                mlflow.log_param("model_name", name)
+                mlflow.log_params(model.get_params())
+                mlflow.log_metric("mae", metrics["mae"])
+                mlflow.log_metric("rmse", metrics["rmse"])
+                mlflow.log_metric("r2", metrics["r2"])
+                mlflow.log_metric("train_time_sec", metrics["train_time_sec"])
+                mlflow.sklearn.log_model(model, registered_model_name=name)
+
+                log_experiment({
+                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                    "model_name": name,
+                    "params": json.dumps(model.get_params()),
+                    "mae": metrics["mae"],
+                    "rmse": metrics["rmse"],
+                    "r2": metrics["r2"],
+                    "train_time_sec": metrics["train_time_sec"],
+                    "n_train": len(X_train),
+                    "n_test": len(X_test),
+                })
+
+                print(f"[train] {name:20s} MAE={metrics['mae']:.3f}  RMSE={metrics['rmse']:.3f}  "
+                      f"R2={metrics['r2']:.4f}  ({train_time:.2f}s)")
+
+        # best model = lowest RMSE on held-out test set
+        best_name = min(results, key=lambda n: results[n]["rmse"])
+        best_model = fitted_models[best_name]
+
+        # Tag the parent run with which child model won, for quick filtering in the UI
+        mlflow.set_tag("best_model", best_name)
+        mlflow.log_metric("best_model_rmse", results[best_name]["rmse"])
+
+        os.makedirs(MODELS_DIR, exist_ok=True)
+        joblib.dump(best_model, BEST_MODEL_PATH)
+
+        # Also log the winning model against the parent run, and register it
+        # in the MLflow Model Registry so it's easy to promote/serve later.
+        mlflow.sklearn.log_model(
+            best_model,
+            artifact_path="best_model",
+            registered_model_name="eta-prediction-best-model",
+        )
+
+        metadata = {
+            "best_model_name": best_name,
+            "feature_columns": FEATURE_COLUMNS,
+            "target_column": TARGET_COL,
+            "metrics": results[best_name],
+            "all_results": results,
+            "trained_at_utc": datetime.now(timezone.utc).isoformat(),
             "n_train": len(X_train),
             "n_test": len(X_test),
-        })
+            "mlflow_run_id": parent_run.info.run_id,
+        }
+        with open(MODEL_METADATA_PATH, "w") as f:
+            json.dump(metadata, f, indent=2)
+        mlflow.log_artifact(MODEL_METADATA_PATH)
 
-        print(f"[train] {name:20s} MAE={metrics['mae']:.3f}  RMSE={metrics['rmse']:.3f}  "
-              f"R2={metrics['r2']:.4f}  ({train_time:.2f}s)")
+        # Reference feature statistics -> baseline for M5 drift monitoring
+        ref_stats = {
+            col: {"mean": float(X_train[col].mean()), "std": float(X_train[col].std())}
+            for col in FEATURE_COLUMNS
+        }
+        ref_stats["_target"] = {"mean": float(y_train.mean()), "std": float(y_train.std())}
+        with open(REFERENCE_STATS_PATH, "w") as f:
+            json.dump(ref_stats, f, indent=2)
+        mlflow.log_artifact(REFERENCE_STATS_PATH)
 
-    # best model = lowest RMSE on held-out test set
-    best_name = min(results, key=lambda n: results[n]["rmse"])
-    best_model = fitted_models[best_name]
+        print(f"\n[train] BEST MODEL: {best_name} -> saved to {BEST_MODEL_PATH}")
+        print(f"[mlflow] Parent run ID: {parent_run.info.run_id}")
 
-    os.makedirs(MODELS_DIR, exist_ok=True)
-    joblib.dump(best_model, BEST_MODEL_PATH)
-
-    metadata = {
-        "best_model_name": best_name,
-        "feature_columns": FEATURE_COLUMNS,
-        "target_column": TARGET_COL,
-        "metrics": results[best_name],
-        "all_results": results,
-        "trained_at_utc": datetime.now(timezone.utc).isoformat(),
-        "n_train": len(X_train),
-        "n_test": len(X_test),
-    }
-    with open(MODEL_METADATA_PATH, "w") as f:
-        json.dump(metadata, f, indent=2)
-
-    # Reference feature statistics -> baseline for M5 drift monitoring
-    ref_stats = {
-        col: {"mean": float(X_train[col].mean()), "std": float(X_train[col].std())}
-        for col in FEATURE_COLUMNS
-    }
-    ref_stats["_target"] = {"mean": float(y_train.mean()), "std": float(y_train.std())}
-    with open(REFERENCE_STATS_PATH, "w") as f:
-        json.dump(ref_stats, f, indent=2)
-
-    print(f"\n[train] BEST MODEL: {best_name} -> saved to {BEST_MODEL_PATH}")
     return metadata
 
 
 if __name__ == "__main__":
     train_and_compare()
+
