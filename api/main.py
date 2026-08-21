@@ -8,6 +8,7 @@ Endpoints:
 
 Handles malformed input (422 via Pydantic validation), tracks basic
 request latency, and logs every prediction for the monitoring pipeline.
+uvicorn api.main:app --reload
 """
 import os
 import uuid
