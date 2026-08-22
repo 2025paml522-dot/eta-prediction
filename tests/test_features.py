@@ -10,6 +10,8 @@ def _base_row(**overrides):
         "distance_km": 5.0,
         "weather_condition": "clear",
         "traffic_level": "medium",
+        "temperature_c": 20.0,
+        "precipitation_mm": 0.0,
         "duration_min": 15.0,
     }
     row.update(overrides)

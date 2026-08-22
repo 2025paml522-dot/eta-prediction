@@ -1,31 +1,38 @@
 import argparse
 import sys
 
+import numpy as np
 import pandas as pd
 import yaml
 
-from src.models.config import (
-CATEGORICAL_MAPS,FEATURE_COLUMNS,TARGET_COL
-)
+CATEGORICAL_MAPS = {
+    "traffic_level": {"low": 0, "medium": 1, "high": 2, "severe": 3},
+    "weather_condition": {"clear": 0, "cloudy": 1, "rain": 2, "storm": 3, "fog": 4},
+}
+
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
+    d = df.copy()
 
-    df["hour_of_day"] = df["pickup_datetime"].dt.hour
-    df["day_of_week"] = df["pickup_datetime"].dt.dayofweek
-    df["is_weekend"] = df["day_of_week"].isin([5, 6])
-    df["is_rush_hour"] = df["hour_of_day"].isin([7, 8, 9, 16, 17, 18])
+    # ---- time features ----
+    d["hour_of_day"] = d["pickup_datetime"].dt.hour
+    d["day_of_week"] = d["pickup_datetime"].dt.dayofweek
+    d["is_weekend"] = d["day_of_week"].isin([5, 6])
+    d["is_rush_hour"] = d["hour_of_day"].isin([7, 8, 9, 16, 17, 18])
 
-    # ---- categorical encodings ----
-    df["traffic_level_enc"] = df["traffic_level"].map(CATEGORICAL_MAPS["traffic_level"]).fillna(-1)
-    df["weather_condition_enc"] = df["weather_condition"].map(CATEGORICAL_MAPS["weather_condition"]).fillna(-1)
+    # ---- cyclical hour encoding ----
+    d["hour_sin"] = np.sin(2 * np.pi * d["hour_of_day"] / 24)
+    d["hour_cos"] = np.cos(2 * np.pi * d["hour_of_day"] / 24)
 
-    # ---- missing weather numeric values ----
-    df["temperature_c"] = df["temperature_c"].fillna(df["temperature_c"].median())
-    df["precipitation_mm"] = df["precipitation_mm"].fillna(0)
+    # ---- categorical encodings (kept alongside the raw columns, not replacing them) ----
+    d["traffic_level_enc"] = d["traffic_level"].map(CATEGORICAL_MAPS["traffic_level"]).fillna(-1)
+    d["weather_condition_enc"] = d["weather_condition"].map(CATEGORICAL_MAPS["weather_condition"]).fillna(-1)
 
-    keep_cols = FEATURE_COLUMNS + ([TARGET_COL] if TARGET_COL in df.columns else [])
-    return df[keep_cols]
+    # ---- missing numeric weather values ----
+    d["temperature_c"] = d["temperature_c"].fillna(d["temperature_c"].median())
+    d["precipitation_mm"] = d["precipitation_mm"].fillna(0)
+
+    return d
 
 
 def run(interim_path: str, out_path: str):
