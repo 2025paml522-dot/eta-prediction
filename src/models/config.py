@@ -10,7 +10,7 @@ PROCESSED_DATA_DIR = os.path.join(DATA_DIR, "processed")
 VERSIONS_DIR = os.path.join(DATA_DIR, "versions")
 
 RAW_TRIPS_FILE = os.path.join(RAW_DATA_DIR, "trips_raw.csv")
-PROCESSED_TRIPS_FILE = os.path.join(PROCESSED_DATA_DIR, "trips_processed.csv")
+PROCESSED_TRIPS_FILE = os.path.join(PROCESSED_DATA_DIR, "train.parquet")
 
 # ---- Models / experiments ----
 MODELS_DIR = os.path.join(ROOT_DIR, "models")

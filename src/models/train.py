@@ -27,7 +27,7 @@ from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
-from src.models.config import (
+from config import (
     PROCESSED_TRIPS_FILE, FEATURE_COLUMNS, TARGET_COL, RANDOM_STATE,
     MODELS_DIR, BEST_MODEL_PATH, MODEL_METADATA_PATH, EXPERIMENTS_LOG,
     REFERENCE_STATS_PATH,
@@ -41,7 +41,7 @@ MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "eta-prediction")
 
 
 def load_dataset() -> pd.DataFrame:
-    df = pd.read_csv(PROCESSED_TRIPS_FILE)
+    df = pd.read_parquet(PROCESSED_TRIPS_FILE)
     return df
 
 
@@ -125,7 +125,7 @@ def train_and_compare(test_size: float = 0.2) -> dict:
                 mlflow.log_metric("rmse", metrics["rmse"])
                 mlflow.log_metric("r2", metrics["r2"])
                 mlflow.log_metric("train_time_sec", metrics["train_time_sec"])
-                mlflow.sklearn.log_model(model, registered_model_name=name)
+                mlflow.sklearn.log_model(model, artifact_path="model", registered_model_name=name)
 
                 log_experiment({
                     "timestamp_utc": datetime.now(timezone.utc).isoformat(),
