@@ -1,0 +1,25 @@
+{
+  "generated_at_utc": "2026-08-23T13:32:02.360060+00:00",
+  "n_reference_rows": 18098,
+  "n_recent_rows": 62,
+  "feature_psi": {
+    "distance_km": 0.0754,
+    "temperature_c": 0.973,
+    "precipitation_mm": 4.4452,
+    "weather_condition": 0.6451,
+    "traffic_level": 0.0977
+  },
+  "flagged_features": {
+    "temperature_c": 0.973,
+    "precipitation_mm": 4.4452,
+    "weather_condition": 0.6451
+  },
+  "alert_features": {
+    "temperature_c": 0.973,
+    "precipitation_mm": 4.4452,
+    "weather_condition": 0.6451
+  },
+  "drift_detected": true,
+  "n_with_ground_truth": 0,
+  "rolling_mae": null
+}
