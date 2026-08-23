@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.model_loader import model_service
 from src.serving.schemas import TripRequest, PredictionResponse, ActualDurationUpdate, HealthResponse
 from src.models.config import PREDICTIONS_LOG, LOGS_DIR
+from src.monitoring.log_predictions import log_prediction
 
 app = FastAPI(
     title="Delivery / Ride ETA Prediction API",
@@ -71,7 +72,15 @@ def predict(trip: TripRequest):
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
 
     request_id = str(uuid.uuid4())
-    _log_prediction(request_id, trip, prediction)
+    trip_fields = trip.model_dump()
+    trip_fields["pickup_datetime"] = trip.pickup_datetime.isoformat()
+    log_prediction(
+        request_id=request_id,
+        trip_fields=trip_fields,
+        prediction=prediction,
+        model_name=model_service.metadata.get("best_model_name"),
+        log_path=PREDICTIONS_LOG,
+    )
 
     return PredictionResponse(
         predicted_duration_min=round(prediction, 2),

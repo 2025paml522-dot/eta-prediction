@@ -1,8 +1,13 @@
 {
+  "pickup_datetime": "2026-08-23T18:30:00",
   "pickup_lat": 40.7580,
   "pickup_lon": -73.9855,
   "dropoff_lat": 40.7128,
   "dropoff_lon": -74.0060,
-  "pickup_datetime": "2026-06-14T18:30:00",
-  "weather_condition": "rain"
+  "distance_km": 4.2,
+  "weather_condition": "rain",
+  "temperature_c": 18.5,
+  "precipitation_mm": 3.1,
+  "traffic_level": "high",
+  "passenger_count": 2
 }

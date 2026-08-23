@@ -1,50 +1,43 @@
 """
 Logs every prediction the API serves, for later drift detection (M5).
 
-Design: append-only JSONL (one JSON object per line). This format is
-easy to append to safely from a running API process, and pandas can
-read it directly with pd.read_json(path, lines=True) for the drift
-analysis in detect_drift.py.
-
-NOTE: actual_duration_min starts as None. A separate process (not yet
-built) will need to backfill it once real trip outcomes are known --
-that's a design gap to raise with the team, not solved here.
+Design: append-only CSV, one row per prediction, matching TripRequest's
+fields plus prediction metadata. actual_duration_min starts as None and
+is filled in later via the API's /feedback endpoint once the real trip
+outcome is known -- that's what lets detect_drift.py compute rolling MAE.
 """
-import json
-import uuid
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent  # src/monitoring/ -> src/ -> repo root
+import pandas as pd
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+DEFAULT_LOG_PATH = REPO_ROOT / "logs" / "predictions_log.csv"
 
 
 def log_prediction(
-    features: dict,
-    predicted_duration_min: float,
-    model_version: str,
+    request_id: str,
+    trip_fields: dict,
+    prediction: float,
+    model_name: str,
     log_path: str = None,
-) -> str:
-    """
-    Append one prediction record to the log. Returns the request_id.
-    """
+) -> None:
     if log_path is None:
-        log_path = REPO_ROOT / "data" / "monitoring" / "predictions.jsonl"
+        log_path = DEFAULT_LOG_PATH
 
-    request_id = str(uuid.uuid4())
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    record = {
+    row = dict(trip_fields)
+    row.update({
         "request_id": request_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "model_version": model_version,
-        "features": features,
-        "predicted_duration_min": predicted_duration_min,
+        "predicted_duration_min": prediction,
         "actual_duration_min": None,
-    }
+        "predicted_at_utc": datetime.now(timezone.utc).isoformat(),
+        "model_name": model_name,
+    })
 
-    path = Path(log_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(path, "a") as f:
-        f.write(json.dumps(record) + "\n")
-
-    return request_id
+    df_row = pd.DataFrame([row])
+    write_header = not os.path.exists(log_path)
+    df_row.to_csv(log_path, mode="a", header=write_header, index=False)
