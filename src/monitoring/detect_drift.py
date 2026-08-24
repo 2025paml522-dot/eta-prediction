@@ -3,6 +3,7 @@ Drift detection for the ETA prediction service .
 
 """
 import argparse
+import os
 import json
 from datetime import datetime, timezone
 
@@ -121,6 +122,96 @@ def main():
     if report["drift_detected"]:
         print(f"[detect_drift] ALERT: drift detected in {list(report['alert_features'].keys())}")
 
+def run_drift_check(
+    reference_path: str = None,
+    recent_path: str = None,
+    out_path: str = None,
+) -> dict:
+    """
+    No-argument-friendly wrapper around detect_drift(), used by
+    dashboard/app.py's "Run drift check now" button.
+
+    Writes a report in the schema dashboard/app.py's Monitoring & Drift
+    tab actually reads (n_predictions_total, max_psi, feature_drift_psi,
+    retrain_recommended, reasons, performance_drift.{live_mae,test_mae,
+    n_labeled_samples,degradation_ratio}) -- this is a DIFFERENT shape
+    than detect_drift()'s own return value (which uses feature_psi,
+    n_recent_rows, rolling_mae, etc. -- that's the schema the CLI and
+    reports/drift_report.json use, kept unchanged since it's already
+    verified working). This function translates between the two.
+    """
+    from src.models.config import PROCESSED_TRIPS_FILE, PREDICTIONS_LOG, DRIFT_REPORT_PATH, EXPERIMENTS_LOG
+
+    if reference_path is None:
+        reference_path = str(PROCESSED_TRIPS_FILE)
+    if recent_path is None:
+        recent_path = str(PREDICTIONS_LOG)
+    if out_path is None:
+        out_path = str(DRIFT_REPORT_PATH)
+
+    if not os.path.exists(recent_path):
+        report = {
+            "status": "no_predictions_logged_yet",
+            "n_predictions_total": 0,
+            "max_psi": 0,
+            "feature_drift_psi": {},
+            "retrain_recommended": False,
+            "reasons": [],
+            "performance_drift": {
+                "live_mae": "—", "test_mae": "—",
+                "n_labeled_samples": 0, "degradation_ratio": "—",
+            },
+        }
+    else:
+        if str(reference_path).endswith(".parquet"):
+            reference_df = pd.read_parquet(reference_path)
+        else:
+            reference_df = pd.read_csv(reference_path)
+
+        recent_df = pd.read_csv(recent_path)
+
+        raw_report = detect_drift(reference_df, recent_df)
+
+        # Look up the best model's training-time test MAE from the
+        # experiments log, for the performance_drift comparison.
+        test_mae = "—"
+        try:
+            exp_df = pd.read_csv(EXPERIMENTS_LOG)
+            if len(exp_df) > 0 and "mae" in exp_df.columns:
+                test_mae = round(float(exp_df.sort_values("mae").iloc[0]["mae"]), 4)
+        except Exception:
+            pass  # experiments log missing/unreadable -- leave as "—" rather than fail the whole check
+
+        feature_psi = raw_report.get("feature_psi", {})
+        max_psi = round(max(feature_psi.values()), 4) if feature_psi else 0
+        alert_features = raw_report.get("alert_features", {})
+        rolling_mae = raw_report.get("rolling_mae")
+        n_labeled = raw_report.get("n_with_ground_truth", 0)
+
+        degradation_ratio = "—"
+        if rolling_mae is not None and isinstance(test_mae, (int, float)) and test_mae:
+            degradation_ratio = round(rolling_mae / test_mae, 3)
+
+        report = {
+            "status": "ok",
+            "n_predictions_total": raw_report.get("n_recent_rows", 0),
+            "max_psi": max_psi,
+            "feature_drift_psi": feature_psi,
+            "retrain_recommended": len(alert_features) > 0,
+            "reasons": list(alert_features.keys()),
+            "performance_drift": {
+                "live_mae": rolling_mae if rolling_mae is not None else "—",
+                "test_mae": test_mae,
+                "n_labeled_samples": n_labeled,
+                "degradation_ratio": degradation_ratio,
+            },
+        }
+
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "w") as f:
+        json.dump(report, f, indent=2)
+
+    return report
 
 if __name__ == "__main__":
     main()
