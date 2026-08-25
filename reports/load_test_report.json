@@ -1,0 +1,15 @@
+{
+  "n_requests_attempted": 100,
+  "n_successful": 100,
+  "n_errors": 0,
+  "latency_ms": {
+    "mean": 27.41,
+    "min": 19.02,
+    "p50": 24.25,
+    "p95": 45.2,
+    "p99": 51.45,
+    "max": 53.66
+  },
+  "approx_throughput_req_per_sec": 36.48,
+  "note": "Sequential (non-concurrent) requests. Reflects single-request latency and rough sequential throughput, not concurrent load capacity -- a tool like locust/hey would be needed for that."
+}
