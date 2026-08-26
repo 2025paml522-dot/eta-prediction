@@ -1,32 +1,32 @@
 data:
-  raw_path: data/raw/trips.csv
+  raw_path: data/raw/trips_raw.csv
   interim_path: data/interim/trips_validated.parquet
   processed_path: data/processed/train.parquet
   test_size: 0.2
   random_state: 42
 
 features:
-  time_features: [hour_of_day, day_of_week, is_weekend, is_rush_hour]
-  distance_feature: haversine_km
-  categorical: [pickup_zone, weather_condition]
+  time_features: [hour_of_day, day_of_week, is_weekend, is_rush_hour, hour_sin, hour_cos]
+  distance_feature: distance_km  # provided directly in the source data, not derived
+  categorical: [weather_condition, traffic_level]
 
 training:
+  # NOTE: train.py currently reads its own settings from src/models/config.py,
+  # not from this file -- these values are documentation of intent, not
+  # actively wired in. Worth consolidating in a future pass.
   experiment_name: eta-prediction
-  models:
-    - name: linear_regression
-    - name: gradient_boosting
-      params: {n_estimators: 300, max_depth: 6, learning_rate: 0.05}
-  target: trip_duration_seconds
+  models: [linear_regression, ridge_regression, random_forest, gradient_boosting]
+  target: duration_min
   cv_folds: 5
 
 serving:
-  model_stage: Production
   host: 0.0.0.0
   port: 8000
 
 monitoring:
-  reference_window_days: 30
-  drift_check_interval_hours: 24
-  psi_threshold: 0.2
+  # NOTE: src/monitoring/detect_drift.py currently hardcodes these same
+  # threshold values rather than reading them from here.
+  psi_warn_threshold: 0.1
+  psi_alert_threshold: 0.25
   retrain_trigger_metric: mae
   retrain_trigger_threshold_pct: 15
