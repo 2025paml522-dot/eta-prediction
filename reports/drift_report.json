@@ -1,23 +1,24 @@
 {
-  "generated_at_utc": "2026-08-23T13:32:02.360060+00:00",
+  "generated_at_utc": "2026-08-24T04:56:45.096578+00:00",
   "n_reference_rows": 18098,
-  "n_recent_rows": 62,
+  "n_recent_rows": 66,
   "feature_psi": {
-    "distance_km": 0.0754,
-    "temperature_c": 0.973,
-    "precipitation_mm": 4.4452,
-    "weather_condition": 0.6451,
-    "traffic_level": 0.0977
+    "distance_km": 0.1219,
+    "temperature_c": 0.9654,
+    "precipitation_mm": 4.4435,
+    "weather_condition": 0.6565,
+    "traffic_level": 0.0924
   },
   "flagged_features": {
-    "temperature_c": 0.973,
-    "precipitation_mm": 4.4452,
-    "weather_condition": 0.6451
+    "distance_km": 0.1219,
+    "temperature_c": 0.9654,
+    "precipitation_mm": 4.4435,
+    "weather_condition": 0.6565
   },
   "alert_features": {
-    "temperature_c": 0.973,
-    "precipitation_mm": 4.4452,
-    "weather_condition": 0.6451
+    "temperature_c": 0.9654,
+    "precipitation_mm": 4.4435,
+    "weather_condition": 0.6565
   },
   "drift_detected": true,
   "n_with_ground_truth": 0,

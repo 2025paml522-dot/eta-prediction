@@ -1,0 +1,52 @@
+{
+  "best_model_name": "gradient_boosting",
+  "feature_columns": [
+    "distance_km",
+    "hour_of_day",
+    "day_of_week",
+    "is_weekend",
+    "is_rush_hour",
+    "temperature_c",
+    "precipitation_mm",
+    "traffic_level_enc",
+    "weather_condition_enc",
+    "passenger_count"
+  ],
+  "target_column": "duration_min",
+  "metrics": {
+    "mae": 1.5924031550556783,
+    "rmse": 2.0312958396655745,
+    "r2": 0.9743129232477995,
+    "train_time_sec": 6.897
+  },
+  "all_results": {
+    "linear_regression": {
+      "mae": 2.8933656934454945,
+      "rmse": 4.154574541580705,
+      "r2": 0.892546284661212,
+      "train_time_sec": 0.014
+    },
+    "ridge_regression": {
+      "mae": 2.8933300105360593,
+      "rmse": 4.154594160847571,
+      "r2": 0.8925452697952739,
+      "train_time_sec": 0.011
+    },
+    "random_forest": {
+      "mae": 1.6890115962720227,
+      "rmse": 2.212480889658105,
+      "r2": 0.9695261460618054,
+      "train_time_sec": 1.895
+    },
+    "gradient_boosting": {
+      "mae": 1.5924031550556783,
+      "rmse": 2.0312958396655745,
+      "r2": 0.9743129232477995,
+      "train_time_sec": 6.897
+    }
+  },
+  "trained_at_utc": "2026-08-22T06:35:13.203993+00:00",
+  "n_train": 14478,
+  "n_test": 3620,
+  "mlflow_run_id": "b66ec4dbc42c46f7b0a23d2659e99ae7"
+}
